@@ -1,5 +1,5 @@
 {
-    "name": "jonas/hyperf-oci8",
+    "name": "jonas-elias/hyperf-oci8",
     "type": "library",
     "description": "A oracle oci8 handler for hyperf/database.",
     "license": "MIT",
