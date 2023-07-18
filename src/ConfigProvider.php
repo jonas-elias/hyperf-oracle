@@ -2,6 +2,9 @@
 
 namespace Hyperf\Database\Oracle;
 
+use Hyperf\Database\Oracle\Connectors\OracleConnector;
+use Hyperf\Database\Oracle\Listener\RegisterConnectorListener;
+
 /**
  * class ConfigProvider
  *
@@ -9,8 +12,15 @@ namespace Hyperf\Database\Oracle;
  */
 class ConfigProvider
 {
-    public function config()
+    public function __invoke(): array
     {
-        echo 'call function';
+        return [
+            'dependencies' => [
+                'db.connector.oracle' => OracleConnector::class,
+            ],
+            'listeners' => [
+                RegisterConnectorListener::class,
+            ],
+        ];
     }
 }
