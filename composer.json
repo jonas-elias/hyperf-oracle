@@ -1,7 +1,7 @@
 {
-    "name": "jonas-elias/hyperf-oci8",
+    "name": "jonas-elias/hyperf-oracle",
     "type": "library",
-    "description": "A oracle oci8 handler for hyperf/database.",
+    "description": "A oracle handler for hyperf/database.",
     "license": "MIT",
     "keywords": [
         "php",
