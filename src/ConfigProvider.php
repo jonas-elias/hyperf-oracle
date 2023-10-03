@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Hyperf\Database\Oracle;
 
 use Hyperf\Database\Oracle\Connectors\OracleConnector;
