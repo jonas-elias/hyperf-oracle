@@ -7,10 +7,10 @@ namespace Hyperf\Database\Oracle\Schema\Grammars;
 use Hyperf\Database\Schema\Blueprint;
 use Hyperf\Database\Schema\Grammars\Grammar;
 use Hyperf\Support\Fluent;
-use RuntimeException;
+use Hyperf\Database\Connection;
+use Hyperf\Database\Query\Expression;
 
 use function Hyperf\Collection\collect;
-use function Hyperf\Support\with;
 
 class OracleGrammar extends Grammar
 {
@@ -19,31 +19,31 @@ class OracleGrammar extends Grammar
      *
      * @var string
      */
-    protected $wrapper = '%s';
+    protected string $wrapper = '%s';
 
     /**
      * The possible column modifiers.
      *
      * @var array
      */
-    protected $modifiers = ['Increment', 'Nullable', 'Default'];
+    protected array $modifiers = ['Increment', 'Nullable', 'Default'];
 
     /**
      * The possible column serials.
      *
      * @var array
      */
-    protected $serials = ['bigInteger', 'integer', 'mediumInteger', 'smallInteger', 'tinyInteger'];
+    protected array $serials = ['bigInteger', 'integer', 'mediumInteger', 'smallInteger', 'tinyInteger'];
 
     /**
      * @var string
      */
-    protected $schemaPrefix = '';
+    protected string $schemaPrefix = '';
 
     /**
      * @var int
      */
-    protected $maxLength = 50;
+    protected int $maxLength = 50;
 
     /**
      * If this Grammar supports schema changes wrapped in a transaction.
@@ -55,9 +55,11 @@ class OracleGrammar extends Grammar
     /**
      * Compile a create table command.
      *
+     * @param \Hyperf\Database\Schema\Blueprint $blueprint
+     * @param \Hyperf\Support\Fluent $command
      * @return string
      */
-    public function compileCreate(Blueprint $blueprint, Fluent $command)
+    public function compileCreate(Blueprint $blueprint, Fluent $command): string
     {
         $columns = implode(', ', $this->getColumns($blueprint));
 
@@ -78,7 +80,53 @@ class OracleGrammar extends Grammar
         return $sql;
     }
 
-    public function compileCreateDatabase($name, $connection)
+    /**
+     * Get the primary key syntax for a table creation statement.
+     *
+     * @param \Hyperf\Database\Schema\Blueprint $blueprint
+     * @return string
+     */
+    protected function addPrimaryKeys(Blueprint $blueprint): string
+    {
+        $primary = $this->getCommandByName($blueprint, 'primary');
+
+        if (!is_null($primary)) {
+            $columns = $this->columnize($primary->columns);
+
+            return ", constraint {$primary->index} primary key ( {$columns} )";
+        }
+
+        return '';
+    }
+
+    /**
+     * Compile the blueprint's column definitions.
+     *
+     * @param \Hyperf\Database\Schema\Blueprint $blueprint
+     * @return array
+     */
+    protected function getColumns(Blueprint $blueprint): array
+    {
+        $columns = [];
+
+        foreach ($blueprint->getAddedColumns() as $column) {
+            // Each of the column types have their own compiler functions which are tasked
+            // with turning the column definition into its SQL format for this platform
+            // used by the connection. The column's modifiers are compiled and added.
+            $sql = $this->wrap($column) . ' ' . $this->getType($column);
+
+            $columns[] = $this->addModifiers($sql, $blueprint, $column);
+        }
+
+        return $columns;
+    }
+
+    /**
+     * @param string $name
+     * @param \Hyperf\Database\Connection $connection
+     * @return bool
+     */
+    public function compileCreateDatabase(string $name, Connection $connection): bool
     {
         return true;
     }
@@ -86,6 +134,9 @@ class OracleGrammar extends Grammar
     /**
      * Compile a drop fulltext index command.
      *
+     * @param \Hyperf\Database\Schema\Blueprint $blueprint
+     * @param \Hyperf\Support\Fluent $command
+     * @return string
      */
     public function compileDropFullText(Blueprint $blueprint, Fluent $command): string
     {
@@ -144,9 +195,25 @@ class OracleGrammar extends Grammar
      * @param  mixed  $table
      * @return string
      */
-    public function wrapTable($table)
+    public function wrapTable(mixed $table): string
     {
-        return $this->getSchemaPrefix() . parent::wrapTable($table);
+        return str_replace('"', '', parent::wrapTable(
+            $table instanceof Blueprint ? $table->getTable() : $table
+        ));
+    }
+
+    /**
+     * Wrap a value in keyword identifiers.
+     *
+     * @param  Fluent|Expression|string  $value
+     * @param  bool  $prefixAlias
+     * @return string
+     */
+    public function wrap(Fluent|Expression|string $value, $prefixAlias = false): string
+    {
+        return parent::wrap(
+            $value instanceof Fluent ? strtoupper($value->name) : strtoupper($value), $prefixAlias
+        );
     }
 
     /**
@@ -154,7 +221,7 @@ class OracleGrammar extends Grammar
      *
      * @return string
      */
-    public function getSchemaPrefix()
+    public function getSchemaPrefix(): string
     {
         return !empty($this->schemaPrefix) ? $this->schemaPrefix . '.' : '';
     }
@@ -164,7 +231,7 @@ class OracleGrammar extends Grammar
      *
      * @return int
      */
-    public function getMaxLength()
+    public function getMaxLength(): int
     {
         return !empty($this->maxLength) ? $this->maxLength : 30;
     }
@@ -173,8 +240,9 @@ class OracleGrammar extends Grammar
      * Set the schema prefix.
      *
      * @param  string  $prefix
+     * @return void
      */
-    public function setSchemaPrefix($prefix)
+    public function setSchemaPrefix(string $prefix): void
     {
         $this->schemaPrefix = $prefix;
     }
@@ -183,8 +251,9 @@ class OracleGrammar extends Grammar
      * Set max length.
      *
      * @param  int  $length
+     * @return void
      */
-    public function setMaxLength($length)
+    public function setMaxLength(int $length): void
     {
         $this->maxLength = $length;
     }
@@ -192,9 +261,10 @@ class OracleGrammar extends Grammar
     /**
      * Get the foreign key syntax for a table creation statement.
      *
+     * @param \Hyperf\Database\Schema\Blueprint $blueprint
      * @return string
      */
-    protected function addForeignKeys(Blueprint $blueprint)
+    protected function addForeignKeys(Blueprint $blueprint): string
     {
         $sql = '';
 
@@ -224,24 +294,6 @@ class OracleGrammar extends Grammar
     }
 
     /**
-     * Get the primary key syntax for a table creation statement.
-     *
-     * @return string|null
-     */
-    protected function addPrimaryKeys(Blueprint $blueprint)
-    {
-        $primary = $this->getCommandByName($blueprint, 'primary');
-
-        if (!is_null($primary)) {
-            $columns = $this->columnize($primary->columns);
-
-            return ", constraint {$primary->index} primary key ( {$columns} )";
-        }
-
-        return '';
-    }
-
-    /**
      * Compile the query to determine if a table exists.
      *
      * @return string
@@ -251,6 +303,10 @@ class OracleGrammar extends Grammar
         return "select * from all_tables where upper(owner) = upper(?) and upper(table_name) = upper(?)";
     }
 
+    /**
+     * @param \Hyperf\Database\Schema\Blueprint $blueprint
+     * @return array
+     */
     public function compileAutoIncrementStartingValues(Blueprint $blueprint): array
     {
         return collect($blueprint->autoIncrementingStartingValues())->map(function ($value, $column) use ($blueprint) {
@@ -265,7 +321,7 @@ class OracleGrammar extends Grammar
      * @param  string  $table
      * @return string
      */
-    public function compileColumnExists($database, $table)
+    public function compileColumnExists(string $database, string $table): string
     {
         return "select column_name from all_tab_cols where upper(owner) = upper('{$database}') and upper(table_name) = upper('{$table}')";
     }
@@ -273,9 +329,11 @@ class OracleGrammar extends Grammar
     /**
      * Compile an add column command.
      *
+     * @param \Hyperf\Database\Schema\Blueprint $blueprint
+     * @param \Hyperf\Support\Fluent $command
      * @return string
      */
-    public function compileAdd(Blueprint $blueprint, Fluent $command)
+    public function compileAdd(Blueprint $blueprint, Fluent $command): string
     {
         $columns = implode(', ', $this->getColumns($blueprint));
 
@@ -289,8 +347,11 @@ class OracleGrammar extends Grammar
     /**
      * Compile a primary key command.
      *
+     * @param \Hyperf\Database\Schema\Blueprint $blueprint
+     * @param \Hyperf\Support\Fluent $command
+     * @return string
      */
-    public function compilePrimary(Blueprint $blueprint, Fluent $command)
+    public function compilePrimary(Blueprint $blueprint, Fluent $command): string
     {
         $create = $this->getCommandByName($blueprint, 'create');
 
@@ -301,11 +362,15 @@ class OracleGrammar extends Grammar
 
             return "alter table {$table} add constraint {$command->index} primary key ({$columns})";
         }
+
+        return '';
     }
 
     /**
      * Compile a foreign key command.
      *
+     * @param \Hyperf\Database\Schema\Blueprint $blueprint
+     * @param \Hyperf\Support\Fluent $command
      * @return string
      */
     public function compileForeign(Blueprint $blueprint, Fluent $command): string
@@ -337,6 +402,8 @@ class OracleGrammar extends Grammar
 
             return $sql;
         }
+
+        return '';
     }
 
     /**
@@ -346,7 +413,7 @@ class OracleGrammar extends Grammar
      * @param  \Hyperf\Support\Fluent  $command
      * @return string
      */
-    public function compileUnique(Blueprint $blueprint, Fluent $command)
+    public function compileUnique(Blueprint $blueprint, Fluent $command): string
     {
         return 'alter table ' . $this->wrapTable($blueprint) . " add constraint {$command->index} unique ( " . $this->columnize($command->columns) . ' )';
     }
@@ -358,11 +425,8 @@ class OracleGrammar extends Grammar
      * @param  \Hyperf\Support\Fluent  $command
      * @return string
      */
-    public function compileIndex(Blueprint $blueprint, Fluent $command)
+    public function compileIndex(Blueprint $blueprint, Fluent $command): string
     {
-        // return "CREATE INDEX idx_app_users_name ON app.users(name)
-        // INDEXTYPE IS CTXSYS.CONTEXT PARAMETERS ('SYNC(ON COMMIT)')";
-        // dd("create index {$command->index} on " . $this->wrapTable($blueprint) . ' ( ' . $this->columnize($command->columns) . ' )');
         return "create index {$command->index} on " . $this->wrapTable($blueprint) . ' ( ' . $this->columnize($command->columns) . ' )';
     }
 
@@ -373,7 +437,7 @@ class OracleGrammar extends Grammar
      * @param  \Hyperf\Support\Fluent  $command
      * @return string
      */
-    public function compileDrop(Blueprint $blueprint, Fluent $command)
+    public function compileDrop(Blueprint $blueprint, Fluent $command): string
     {
         return 'drop table ' . $this->wrapTable($blueprint);
     }
@@ -381,10 +445,9 @@ class OracleGrammar extends Grammar
     /**
      * Compile the SQL needed to drop all tables.
      *
-     * @param array $tables
      * @return string
      */
-    public function compileDropAllTables($tables): string
+    public function compileDropAllTables(): string
     {
         $compiledStatements = '';
 
@@ -414,7 +477,7 @@ class OracleGrammar extends Grammar
      * @param  \Hyperf\Support\Fluent  $command
      * @return string
      */
-    public function compileDropIfExists(Blueprint $blueprint, Fluent $command)
+    public function compileDropIfExists(Blueprint $blueprint, Fluent $command): string
     {
         $table = $this->wrapTable($blueprint);
 
