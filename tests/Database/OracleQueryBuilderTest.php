@@ -832,10 +832,10 @@ class OracleQueryBuilderTest extends TestCase
         $expected = 'select count(*) as aggregate from ((select * from "POSTS" union select * from "VIDEOS") union select * from "VIDEOS") "TEMP_TABLE"';
         $builder = $this->getBuilder();
 
-        $builder->getConnection()->shouldReceive('select')->once()->withArgs(function ($actualQuery, $actualBindings, $actualUseReadPdo) use ($expected) {
+        $builder->getConnection()->shouldReceive('select')->once()->andReturnUsing(function ($actualQuery) use ($expected) {
             $this->assertEquals($expected, $actualQuery);
-            return;
-        })->andReturn([]);
+            return [];
+        });
 
         $builder->getProcessor()->shouldReceive('processSelect')->once();
         $builder->from('posts')->union($this->getBuilder()->from('videos'))->count();
