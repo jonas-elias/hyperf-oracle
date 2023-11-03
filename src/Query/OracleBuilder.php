@@ -11,47 +11,17 @@ use Hyperf\Database\Model\Relations\Relation;
 use Hyperf\Database\Oracle\Query\Grammars\OracleGrammar;
 use Hyperf\Database\Query\Builder;
 use Hyperf\Database\Query\Expression;
+use InvalidArgumentException;
 
 class OracleBuilder extends Builder
 {
     /**
-     * Run a pagination count query.
-     *
-     * @param array $columns
-     *
-     * @return array
-     */
-    protected function runPaginationCountQuery($columns = ['*']): array
-    {
-        if ($this->groups || $this->havings) {
-            $clone = $this->cloneForPaginationCount();
-
-            if (is_null($clone->columns) && !empty($this->joins)) {
-                $clone->select($this->from.'.*');
-            }
-
-            return $this->newQuery()
-                ->from(new Expression('('.$clone->toSql().')'))
-                ->mergeBindings($clone)
-                ->setAggregate('count', $this->withoutSelectAliases($columns))
-                ->get()->all();
-        }
-
-        $without = $this->unions ? ['orders', 'limit', 'offset'] : ['columns', 'orders', 'limit', 'offset'];
-
-        return $this->cloneWithout($without)
-            ->cloneWithoutBindings($this->unions ? ['order'] : ['select', 'order'])
-            ->setAggregate('count', $this->withoutSelectAliases($columns))
-            ->get()->all();
-    }
-
-    /**
      * Where between columns.
      *
      * @param string $column
-     * @param array  $values
+     * @param array $values
      * @param string $boolean
-     * @param bool   $not
+     * @param bool $not
      *
      * @return \Hyperf\Database\Oracle\Query\OracleBuilder
      */
@@ -78,10 +48,10 @@ class OracleBuilder extends Builder
         // Once we have run the pagination count query, we will get the resulting count and
         // take into account what type of query it was. When there is a group by we will
         // just return the count of the entire results set since that will be correct.
-        if (!isset($results[0])) {
+        if (! isset($results[0])) {
             return 0;
         } elseif (is_object($results[0])) {
-            return (int) (property_exists($results[0], 'AGGREGATE') ? $results[0]->AGGREGATE : $results[0]->aggregate);   // to solve the Oracle issue: auto-convert field to uppercase
+            return (int) (property_exists($results[0], 'AGGREGATE') ? $results[0]->AGGREGATE : $results[0]->aggregate);
         }
 
         return (int) array_change_key_case((array) $results[0])['aggregate'];
@@ -90,8 +60,8 @@ class OracleBuilder extends Builder
     /**
      * Insert a new record and get the value of the primary key.
      *
-     * @param array  $values
-     * @param array  $binaries
+     * @param array $values
+     * @param array $binaries
      * @param string $sequence
      *
      * @return int
@@ -113,8 +83,8 @@ class OracleBuilder extends Builder
     /**
      * Update a new record with blob field.
      *
-     * @param array  $values
-     * @param array  $binaries
+     * @param array $values
+     * @param array $binaries
      * @param string $sequence
      *
      * @return int
@@ -140,9 +110,9 @@ class OracleBuilder extends Builder
      * with up to 1000 expressions to avoid ORA-01795.
      *
      * @param string $column
-     * @param mixed  $values
+     * @param mixed $values
      * @param string $boolean
-     * @param bool   $not
+     * @param bool $not
      *
      * @return \Hyperf\Database\Query\Builder
      */
@@ -159,7 +129,7 @@ class OracleBuilder extends Builder
 
             return $this->where(function ($query) use ($column, $chunks, $type, $not) {
                 foreach ($chunks as $ch) {
-                    $sqlClause = $not ? 'where'.$type : 'orWhere'.$type;
+                    $sqlClause = $not ? 'where' . $type : 'orWhere' . $type;
                     $query->{$sqlClause}($column, $ch);
                 }
             }, null, null, $boolean);
@@ -169,28 +139,10 @@ class OracleBuilder extends Builder
     }
 
     /**
-     * Run the query as a "select" statement against the connection.
-     *
-     * @return array
-     */
-    protected function runSelect(): array
-    {
-        if ($this->lock) {
-            $this->connection->beginTransaction();
-            $result = $this->connection->select($this->toSql(), $this->getBindings(), !$this->useWritePdo);
-            $this->connection->commit();
-
-            return $result;
-        }
-
-        return $this->connection->select($this->toSql(), $this->getBindings(), !$this->useWritePdo);
-    }
-
-    /**
      * Set the table which the query is targeting.
      *
-     * @param \Closure|\Hyperf\Database\Query\Builder|string $table
-     * @param string|null                                    $as
+     * @param Closure|\Hyperf\Database\Query\Builder|string $table
+     * @param string|null $as
      *
      * @return \Hyperf\Database\Oracle\Query\OracleBuilder
      */
@@ -211,40 +163,40 @@ class OracleBuilder extends Builder
     /**
      * Makes "from" fetch from a subquery.
      *
-     * @param \Closure|\Hyperf\Database\Query\Builder|string $query
-     * @param string                                         $as
+     * @param Closure|\Hyperf\Database\Query\Builder|string $query
+     * @param string $as
      *
      * @return \Hyperf\Database\Query\Builder|static
      *
-     * @throws \InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     public function fromSub($query, $as): Builder
     {
         [$query, $bindings] = $this->createSub($query);
 
-        return $this->fromRaw('('.$query.') '.$this->grammar->wrapTable($as), $bindings);
+        return $this->fromRaw('(' . $query . ') ' . $this->grammar->wrapTable($as), $bindings);
     }
 
     /**
      * Add a subquery join clause to the query.
      *
-     * @param \Closure|\Hyperf\Database\Query\Builder|string $query
-     * @param string                                         $as
-     * @param \Closure|string                                $first
-     * @param string|null                                    $operator
-     * @param string|null                                    $second
-     * @param string                                         $type
-     * @param bool                                           $where
+     * @param Closure|\Hyperf\Database\Query\Builder|string $query
+     * @param string $as
+     * @param Closure|string $first
+     * @param string|null $operator
+     * @param string|null $second
+     * @param string $type
+     * @param bool $where
      *
      * @return \Hyperf\Database\Query\Builder|static
      *
-     * @throws \InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     public function joinSub($query, $as, $first, $operator = null, $second = null, $type = 'inner', $where = false): Builder
     {
         [$query, $bindings] = $this->createSub($query);
 
-        $expression = '('.$query.') '.$this->grammar->wrapTable($as);
+        $expression = '(' . $query . ') ' . $this->grammar->wrapTable($as);
 
         $this->addBinding($bindings, 'join');
 
@@ -272,5 +224,54 @@ class OracleBuilder extends Builder
     public function clone(): static
     {
         return clone $this;
+    }
+
+    /**
+     * Run a pagination count query.
+     *
+     * @param array $columns
+     *
+     * @return array
+     */
+    protected function runPaginationCountQuery($columns = ['*']): array
+    {
+        if ($this->groups || $this->havings) {
+            $clone = $this->cloneForPaginationCount();
+
+            if (is_null($clone->columns) && ! empty($this->joins)) {
+                $clone->select($this->from . '.*');
+            }
+
+            return $this->newQuery()
+                ->from(new Expression('(' . $clone->toSql() . ')'))
+                ->mergeBindings($clone)
+                ->setAggregate('count', $this->withoutSelectAliases($columns))
+                ->get()->all();
+        }
+
+        $without = $this->unions ? ['orders', 'limit', 'offset'] : ['columns', 'orders', 'limit', 'offset'];
+
+        return $this->cloneWithout($without)
+            ->cloneWithoutBindings($this->unions ? ['order'] : ['select', 'order'])
+            ->setAggregate('count', $this->withoutSelectAliases($columns))
+            ->get()->all();
+    }
+
+    /**
+     * Run the query as a "select" statement against the connection.
+     *
+     * @return array
+     */
+    protected function runSelect(): array
+    {
+        if ($this->lock) {
+            $this->connection->beginTransaction();
+            $result = $this->connection->select($this->toSql(), $this->getBindings(), ! $this->useWritePdo);
+            $this->connection->commit();
+
+            return $result;
+        }
+
+        return $this->connection->select($this->toSql(), $this->getBindings(), ! $this->useWritePdo);
     }
 }
