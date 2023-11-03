@@ -13,7 +13,10 @@ use function Hyperf\Collection\head;
 
 class OracleBuilder extends Builder
 {
-    protected $helper;
+    /**
+     * @var OracleAutoIncrementHelper
+     */
+    protected OracleAutoIncrementHelper $helper;
 
     /**
      * @var OraclePreferences
@@ -21,14 +24,13 @@ class OracleBuilder extends Builder
     protected $ctxPreferences;
 
     /**
-     * @param  Connection  $connection
+     * @param Connection $connection
      */
     public function __construct(Connection $connection)
     {
         parent::__construct($connection);
         $this->ctxPreferences = new OraclePreferences($connection);
         $this->helper = new OracleAutoIncrementHelper($connection);
-        // $this->comment = new Comment($connection);
     }
 
     /**
@@ -48,42 +50,26 @@ class OracleBuilder extends Builder
 
         $this->build($blueprint);
 
-        // $this->comment->setComments($blueprint);
-
-        // $this->helper = new OracleAutoIncrementHelper($this->connection);
-
-
         $this->helper->createAutoIncrementObjects($blueprint, $table);
-        // $this->helper->createAutoIncrementObjects($blueprint, $table);
-    }
-
-    protected function createBlueprint($table, Closure $callback = null)
-    {
-        $blueprint = new OracleBlueprint($table, $callback);
-        $blueprint->setTablePrefix($this->connection->getTablePrefix());
-        $blueprint->setMaxLength($this->grammar->getMaxLength());
-
-        return $blueprint;
     }
 
     /**
      * Create a database in the schema.
      *
      * @param string $name
+     *
+     * @return bool
      */
-    public function createDatabase($name): bool
+    public function createDatabase(string $name): bool
     {
         return false;
-        // return $this->connection->statement(
-        //     $this->grammar->compileCreateDatabase($name, $this->connection)
-        // );
     }
-
 
     /**
      * Indicate that the table should be dropped if it exists.
      *
-     * @param  string  $table
+     * @param string $table
+     *
      * @return void
      */
     public function dropIfExists($table): void
@@ -101,9 +87,6 @@ class OracleBuilder extends Builder
     public function dropDatabaseIfExists($name): bool
     {
         return false;
-        // return $this->connection->statement(
-        //     $this->grammar->compileDropDatabaseIfExists($name)
-        // );
     }
 
     /**
@@ -240,6 +223,7 @@ class OracleBuilder extends Builder
      * Get the column type listing for a given table.
      *
      * @param string $table
+     *
      * @return array
      */
     public function getColumnTypeListing($table)
@@ -258,10 +242,20 @@ class OracleBuilder extends Builder
         return $processor->processListing($results);
     }
 
+    protected function createBlueprint($table, Closure $callback = null)
+    {
+        $blueprint = new OracleBlueprint($table, $callback);
+        $blueprint->setTablePrefix($this->connection->getTablePrefix());
+        $blueprint->setMaxLength($this->grammar->getMaxLength());
+
+        return $blueprint;
+    }
+
     /**
      * Parse the table name and extract the schema and table.
      *
      * @param string $table
+     *
      * @return array
      */
     protected function parseSchemaAndTable($table)
@@ -269,7 +263,7 @@ class OracleBuilder extends Builder
         $table = explode('.', $table);
 
         if (is_array($schema = $this->connection->getConfig('schema'))) {
-            if (in_array($table[0], $schema)) {
+            if (in_array($table[0], $schema, true)) {
                 return [array_shift($table), implode('.', $table)];
             }
 
