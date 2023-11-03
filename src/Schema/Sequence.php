@@ -4,24 +4,37 @@ declare(strict_types=1);
 
 namespace Hyperf\Database\Oracle\Schema;
 
+use Hyperf\Database\ConnectionInterface;
+
 class Sequence
 {
-    protected $connection;
+    /**
+     * @var ConnectionInterface
+     */
+    protected ConnectionInterface $connection;
 
-    public function __construct($connection)
+    /**
+     * Method constructor.
+     *
+     * @param ConnectionInterface $connection
+     *
+     * @return void
+     */
+    public function __construct(ConnectionInterface $connection)
     {
         $this->connection = $connection;
     }
 
     /**
-     * function to create oracle sequence.
+     * Function to create oracle sequence.
      *
-     * @param  string  $name
-     * @param  int  $start
-     * @param  bool  $nocache
-     * @param  int  $min
-     * @param  bool  $max
-     * @param  int  $increment
+     * @param string $name
+     * @param int $start
+     * @param bool $nocache
+     * @param int $min
+     * @param bool $max
+     * @param int $increment
+     *
      * @return bool
      */
     public function create($name, $start = 1, $nocache = false, $min = 1, $max = false, $increment = 1)
@@ -44,27 +57,28 @@ class Sequence
     /**
      * Wrap sequence name with schema prefix.
      *
-     * @param  string  $name
+     * @param string $name
+     *
      * @return string
      */
     public function wrap($name)
     {
         if ($this->connection->getConfig('prefix_schema')) {
-            return $this->connection->getConfig('prefix_schema').'.'.$name;
+            return $this->connection->getConfig('prefix_schema') . '.' . $name;
         }
 
         return $name;
     }
 
     /**
-     * function to safely drop sequence db object.
+     * Function to safely drop sequence db object.
      *
-     * @param  string  $name
+     * @param string $name
+     *
      * @return bool
      */
     public function drop($name)
     {
-        // check if a valid name and sequence exists
         if (! $name || ! $this->exists($name)) {
             return false;
         }
@@ -84,9 +98,10 @@ class Sequence
     }
 
     /**
-     * function to check if sequence exists.
+     * Function to check if sequence exists.
      *
-     * @param  string  $name
+     * @param string $name
+     *
      * @return bool
      */
     public function exists($name)
@@ -103,9 +118,10 @@ class Sequence
     }
 
     /**
-     * get sequence next value.
+     * Get sequence next value.
      *
-     * @param  string  $name
+     * @param string $name
+     *
      * @return int
      */
     public function nextValue($name)
@@ -120,9 +136,10 @@ class Sequence
     }
 
     /**
-     * same function as lastInsertId. added for clarity with oracle sql statement.
+     * Same function as lastInsertId. added for clarity with oracle sql statement.
      *
-     * @param  string  $name
+     * @param string $name
+     *
      * @return int
      */
     public function currentValue($name)
@@ -131,14 +148,14 @@ class Sequence
     }
 
     /**
-     * function to get oracle sequence last inserted id.
+     * Function to get oracle sequence last inserted id.
      *
-     * @param  string  $name
+     * @param string $name
+     *
      * @return int
      */
     public function lastInsertId($name)
     {
-        // check if a valid name and sequence exists
         if (! $name || ! $this->exists($name)) {
             return 0;
         }
