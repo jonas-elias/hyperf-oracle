@@ -11,9 +11,9 @@ class OracleBlueprint extends Blueprint
     /**
      * Table comment.
      *
-     * @var string
+     * @var string|null
      */
-    public string $comment = null;
+    public $comment = null;
 
     /**
      * Column comments.
@@ -27,7 +27,7 @@ class OracleBlueprint extends Blueprint
      *
      * @var string
      */
-    protected string $prefix;
+    protected $prefix = null;
 
     /**
      * Database object max length variable.
