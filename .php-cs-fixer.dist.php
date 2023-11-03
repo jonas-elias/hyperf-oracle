@@ -25,6 +25,11 @@ return (new PhpCsFixer\Config())
                 'declare',
             ],
         ],
+        'general_phpdoc_annotation_remove' => [
+            'annotations' => [
+                'author',
+            ],
+        ],
         'ordered_imports' => [
             'imports_order' => [
                 'class', 'function', 'const',

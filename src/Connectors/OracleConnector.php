@@ -12,8 +12,8 @@ use PDO;
 /**
  * class OracleConnector
  *
- * @author jonas-elias
  * @extends OracleConnector
+ *
  * @implements ConnectorInterface
  */
 class OracleConnector extends Connector implements ConnectorInterface
@@ -35,6 +35,7 @@ class OracleConnector extends Connector implements ConnectorInterface
      * Establish a database connection.
      *
      * @param array $config
+     *
      * @return PDO
      */
     public function connect(array $config): PDO
@@ -62,7 +63,9 @@ class OracleConnector extends Connector implements ConnectorInterface
      * Create a new PDO connection.
      *
      * @param string $dsn
+     *
      * @return PDO
+     *
      * @throws Exception
      */
     public function createConnection($tns, array $config, array $options)
@@ -90,37 +93,11 @@ class OracleConnector extends Connector implements ConnectorInterface
     }
 
     /**
-     * Get encoding connection oracle.
-     *
-     * @param array $config
-     * @return string
-     */
-    protected function getEncoding(array $config): string
-    {
-        return $config['charset'] ?? '';
-    }
-
-    /**
-     * Configure the timezone on the connection.
-     *
-     * @param PDO $connection
-     * @param array $config
-     * @return void
-     */
-    protected function configureTimezone(PDO $connection, array $config): void
-    {
-        if (isset($config['timezone'])) {
-            $timezone = $config['timezone'];
-
-            $connection->prepare("ALTER SESSION SET TIME_ZONE = '{$config['timezone']}'")->execute();
-        }
-    }
-
-    /**
      * Configure oracle session date format.
      *
      * @param PDO $connection
      * @param ?string $format
+     *
      * @return void
      */
     public function configureDateFormat(PDO $connection, ?string $format = 'YYYY-MM-DD HH24:MI:SS'): void
@@ -136,16 +113,46 @@ class OracleConnector extends Connector implements ConnectorInterface
     }
 
     /**
+     * Get encoding connection oracle.
+     *
+     * @param array $config
+     *
+     * @return string
+     */
+    protected function getEncoding(array $config): string
+    {
+        return $config['charset'] ?? '';
+    }
+
+    /**
+     * Configure the timezone on the connection.
+     *
+     * @param PDO $connection
+     * @param array $config
+     *
+     * @return void
+     */
+    protected function configureTimezone(PDO $connection, array $config): void
+    {
+        if (isset($config['timezone'])) {
+            $timezone = $config['timezone'];
+
+            $connection->prepare("ALTER SESSION SET TIME_ZONE = '{$config['timezone']}'")->execute();
+        }
+    }
+
+    /**
      * get a TNS string connection oracle.
      *
      * @param array $config
+     *
      * @return string
      */
     protected function getTNS(array $config): string
     {
         extract($config, EXTR_SKIP);
 
-        $tns = "oci:dbname=" . "(DESCRIPTION =
+        $tns = 'oci:dbname=' . "(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(HOST = {$host})(PORT = {$port}))
             (CONNECT_DATA = 
                 (SERVER = DEDICATED)
@@ -162,11 +169,12 @@ class OracleConnector extends Connector implements ConnectorInterface
      * Configure the auto commit setting.
      *
      * @param array $config
+     *
      * @return void
      */
     protected function configureAutoCommit(array $config): void
     {
-        if (!isset($config['auto_commit'])) {
+        if (! isset($config['auto_commit'])) {
             return;
         }
 
