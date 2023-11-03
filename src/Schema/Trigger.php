@@ -16,15 +16,16 @@ class Trigger
     /**
      * Function to create auto increment trigger for a table.
      *
-     * @param  string  $table
-     * @param  string  $column
-     * @param  string  $triggerName
-     * @param  string  $sequenceName
+     * @param string $table
+     * @param string $column
+     * @param string $triggerName
+     * @param string $sequenceName
+     *
      * @return bool
      */
     public function autoIncrement($table, $column, $triggerName, $sequenceName)
     {
-        if (!($table && $column && $triggerName && $sequenceName)) {
+        if (! ($table && $column && $triggerName && $sequenceName)) {
             return false;
         }
 
@@ -50,28 +51,15 @@ class Trigger
     }
 
     /**
-     * Wrap value if reserved word.
-     *
-     * @param  string  $value
-     * @return string
-     */
-    protected function wrapValue($value)
-    {
-        $value = strtoupper($value);
-
-        return $value;
-        // return $this->isReserved($value) ? '"'.$value.'"' : $value;
-    }
-
-    /**
      * Function to safely drop trigger db object.
      *
-     * @param  string  $name
+     * @param string $name
+     *
      * @return bool
      */
     public function drop($name)
     {
-        if (!$name) {
+        if (! $name) {
             return false;
         }
 
@@ -84,5 +72,19 @@ class Trigger
             when e then
                 null;
             end;");
+    }
+
+    /**
+     * Wrap value if reserved word.
+     *
+     * @param string $value
+     *
+     * @return string
+     */
+    protected function wrapValue($value)
+    {
+        $value = strtoupper($value);
+
+        return $value;
     }
 }
