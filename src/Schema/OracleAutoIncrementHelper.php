@@ -4,17 +4,32 @@ declare(strict_types=1);
 
 namespace Hyperf\Database\Oracle\Schema;
 
+use Hyperf\Database\ConnectionInterface;
 use Hyperf\Database\Schema\Blueprint;
 
 class OracleAutoIncrementHelper
 {
-    protected $connection;
+    /**
+     * @var ConnectionInterface
+     */
+    protected ConnectionInterface $connection;
 
-    protected $trigger;
+    /**
+     * @var Trigger
+     */
+    protected Trigger $trigger;
 
-    protected $sequence;
+    /**
+     * @var Sequence
+     */
+    protected Sequence $sequence;
 
-    public function __construct($connection)
+    /**
+     * Method constructor.
+     *
+     * @param ConnectionInterface $connection
+     */
+    public function __construct(ConnectionInterface $connection)
     {
         $this->connection = $connection;
         $this->sequence = new Sequence($connection);
@@ -22,90 +37,67 @@ class OracleAutoIncrementHelper
     }
 
     /**
-     * create sequence and trigger for autoIncrement support.
+     * Create sequence and trigger for autoIncrement support.
      *
-     * @param  string  $table
+     * @param \Hyperf\Database\Schema\Blueprint $blueprint
+     * @param string $table
+     *
      * @return null
      */
-    public function createAutoIncrementObjects(Blueprint $blueprint, $table)
+    public function createAutoIncrementObjects(Blueprint $blueprint, $table): void
     {
         $column = $this->getQualifiedAutoIncrementColumn($blueprint);
 
-        // return if no qualified AI column
-        if (is_null($column)) {
-            return;
+        if (! is_null($column)) {
+            $col = $column->name;
+            $start = $column->start ?? $column->startingValue ?? 1;
+    
+            $prefix = $this->connection->getTablePrefix();
+    
+            $sequenceName = $this->createObjectName($prefix, $table, $col, 'seq');
+            $this->sequence->create($sequenceName, $start, $column->nocache);
+    
+            $triggerName = $this->createObjectName($prefix, $table, $col, 'trg');
+            $this->trigger->autoIncrement($prefix . $table, $col, $triggerName, $sequenceName);
         }
-
-        $col = $column->name;
-        $start = $column->start ?? $column->startingValue ?? 1;
-
-        // get table prefix
-        $prefix = $this->connection->getTablePrefix();
-
-        // create sequence for auto increment
-        $sequenceName = $this->createObjectName($prefix, $table, $col, 'seq');
-        $this->sequence->create($sequenceName, $start, $column->nocache);
-
-        // create trigger for auto increment work around
-        $triggerName = $this->createObjectName($prefix, $table, $col, 'trg');
-        $this->trigger->autoIncrement($prefix.$table, $col, $triggerName, $sequenceName);
     }
 
     /**
      * Get qualified autoincrement column.
      *
-     * @param  Blueprint  $blueprint
+     * @param Blueprint $blueprint
+     *
      * @return \Hyperf\Support\Fluent|null
      */
-    public function getQualifiedAutoIncrementColumn(Blueprint $blueprint)
+    public function getQualifiedAutoIncrementColumn(Blueprint $blueprint): \Hyperf\Support\Fluent|null
     {
         $columns = $blueprint->getColumns();
 
-        // search for primary key / autoIncrement column
         foreach ($columns as $column) {
-            // if column is autoIncrement set the primary col name
             if ($column->autoIncrement) {
                 return $column;
             }
         }
-    }
 
-    /**
-     * Create an object name that limits to 30 or 128 chars depending on the server version.
-     *
-     * @param  string  $prefix
-     * @param  string  $table
-     * @param  string  $col
-     * @param  string  $type
-     * @return string
-     */
-    private function createObjectName($prefix, $table, $col, $type)
-    {
-        $maxLength = $this->connection->getSchemaGrammar()->getMaxLength();
-
-        return substr($prefix.$table.'_'.$col.'_'.$type, 0, $maxLength);
+        return null;
     }
 
     /**
      * Drop sequence and triggers if exists, autoincrement objects.
      *
-     * @param  string  $table
-     * @return null
+     * @param string $table
+     *
+     * @return void
      */
-    public function dropAutoIncrementObjects($table)
+    public function dropAutoIncrementObjects(string $table): void
     {
-        // drop sequence and trigger object
         $prefix = $this->connection->getTablePrefix();
-        // get the actual primary column name from table
-        $col = $this->getPrimaryKey($prefix.$table);
+        $col = $this->getPrimaryKey($prefix . $table);
 
-        // if primary key col is set, drop auto increment objects
         if (isset($col) && ! empty($col)) {
-            // drop sequence for auto increment
             $sequenceName = $this->createObjectName($prefix, $table, $col, 'seq');
             $this->sequence->drop($sequenceName);
 
-            // drop trigger for auto increment work around
             $triggerName = $this->createObjectName($prefix, $table, $col, 'trg');
             $this->trigger->drop($triggerName);
         }
@@ -114,10 +106,11 @@ class OracleAutoIncrementHelper
     /**
      * Get table's primary key.
      *
-     * @param  string  $table
+     * @param string $table
+     *
      * @return string
      */
-    public function getPrimaryKey($table)
+    public function getPrimaryKey(string $table): string
     {
         if (! $table) {
             return '';
@@ -146,7 +139,7 @@ class OracleAutoIncrementHelper
      *
      * @return Sequence
      */
-    public function getSequence()
+    public function getSequence(): Sequence
     {
         return $this->sequence;
     }
@@ -154,9 +147,11 @@ class OracleAutoIncrementHelper
     /**
      * Set sequence instance.
      *
-     * @param  Sequence  $sequence
+     * @param Sequence $sequence
+     *
+     * @return void
      */
-    public function setSequence($sequence)
+    public function setSequence($sequence): void
     {
         $this->sequence = $sequence;
     }
@@ -166,7 +161,7 @@ class OracleAutoIncrementHelper
      *
      * @return Trigger
      */
-    public function getTrigger()
+    public function getTrigger(): Trigger
     {
         return $this->trigger;
     }
@@ -174,10 +169,29 @@ class OracleAutoIncrementHelper
     /**
      * Set the trigger instance.
      *
-     * @param  Trigger  $trigger
+     * @param Trigger $trigger
+     *
+     * @return void
      */
-    public function setTrigger($trigger)
+    public function setTrigger(Trigger $trigger): void
     {
         $this->trigger = $trigger;
+    }
+
+    /**
+     * Create an object name that limits to 30 or 128 chars depending on the server version.
+     *
+     * @param string $prefix
+     * @param string $table
+     * @param string $col
+     * @param string $type
+     *
+     * @return string
+     */
+    private function createObjectName(string $prefix, string $table, string $col, string $type): string
+    {
+        $maxLength = $this->connection->getSchemaGrammar()->getMaxLength();
+
+        return substr($prefix . $table . '_' . $col . '_' . $type, 0, $maxLength);
     }
 }
