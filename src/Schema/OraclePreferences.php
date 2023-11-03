@@ -38,52 +38,30 @@ class OraclePreferences
     }
 
     /**
-     * Create a preferences values to use in index fullText 
+     * Create a preferences values to use in index fullText
      *
      * @param \Hyperf\Database\Schema\Blueprint $blueprint
+     *
      * @return void
      */
     public function createPreferences(Blueprint $blueprint): void
     {
-            $this->setPreferenceFullText($blueprint);
+        $this->setPreferenceFullText($blueprint);
     
-            $sql = $this->generateSqlCreatePreferences();
+        $sql = $this->generateSqlCreatePreferences();
     
-            if (!empty($sql)) {
-                $this->connection->statement(
-                    "BEGIN $sql END;"
-                );
-            }
-    }
-
-    /**
-     * Generate script sql to create preferences
-     *
-     * @param  ?string  $objectNameOracle
-     * @param  ?string  $attributeNameOracle
-     * @return string
-     */
-    protected function generateSqlCreatePreferences(
-        ?string $objectNameOracle = 'MULTI_COLUMN_DATASTORE',
-        ?string $attributeNameOracle = 'COLUMNS'
-    ): string {
-        $ctxDdlCreatePreferences = [];
-
-        foreach ($this->columns as $key => $columns) {
-            $preferenceName = $this->preferenceName[$key];
-            $formattedColumns = $this->formatMultipleCtxColumns($columns);
-
-            $ctxDdlCreatePreferences[] = "ctx_ddl.create_preference('{$preferenceName}', '{$objectNameOracle}');
-                ctx_ddl.set_attribute('{$preferenceName}', '{$attributeNameOracle}', '{$formattedColumns}');";
+        if (! empty($sql)) {
+            $this->connection->statement(
+                "BEGIN $sql END;"
+            );
         }
-
-        return implode(' ', $ctxDdlCreatePreferences);
     }
 
     /**
      * Set columns and preference name to class attributes
      *
      * @param \Hyperf\Database\Schema\Blueprint $blueprint
+     *
      * @return void
      */
     public function setPreferenceFullText(Blueprint $blueprint): void
@@ -92,7 +70,7 @@ class OraclePreferences
         $this->preferenceName = [];
 
         foreach ($blueprint->getCommands() as $value) {
-            if ($value['name'] === "fulltext" && count($value['columns']) > 1) {
+            if ($value['name'] === 'fulltext' && count($value['columns']) > 1) {
                 $this->columns[] = $value['columns'];
                 $this->preferenceName[] = $value['index'] . '_preference';
             }
@@ -100,20 +78,10 @@ class OraclePreferences
     }
 
     /**
-     * Format with "implode" function columns to use in preferences
-     *
-     * @param  array  $columns
-     * @return string
-     */
-    protected function formatMultipleCtxColumns(array $columns): string
-    {
-        return implode(', ', $columns);
-    }
-
-    /**
      * Drop preferences by specified table
      *
-     * @param  string  $table
+     * @param string $table
+     *
      * @return void
      */
     public function dropPreferencesByTable(string $table): void
@@ -149,5 +117,42 @@ class OraclePreferences
             END;";
 
         $this->connection->statement($sqlDropAllPreferences);
+    }
+
+    /**
+     * Generate script sql to create preferences
+     *
+     * @param ?string $objectNameOracle
+     * @param ?string $attributeNameOracle
+     *
+     * @return string
+     */
+    protected function generateSqlCreatePreferences(
+        ?string $objectNameOracle = 'MULTI_COLUMN_DATASTORE',
+        ?string $attributeNameOracle = 'COLUMNS'
+    ): string {
+        $ctxDdlCreatePreferences = [];
+
+        foreach ($this->columns as $key => $columns) {
+            $preferenceName = $this->preferenceName[$key];
+            $formattedColumns = $this->formatMultipleCtxColumns($columns);
+
+            $ctxDdlCreatePreferences[] = "ctx_ddl.create_preference('{$preferenceName}', '{$objectNameOracle}');
+                ctx_ddl.set_attribute('{$preferenceName}', '{$attributeNameOracle}', '{$formattedColumns}');";
+        }
+
+        return implode(' ', $ctxDdlCreatePreferences);
+    }
+
+    /**
+     * Format with "implode" function columns to use in preferences
+     *
+     * @param array $columns
+     *
+     * @return string
+     */
+    protected function formatMultipleCtxColumns(array $columns): string
+    {
+        return implode(', ', $columns);
     }
 }
