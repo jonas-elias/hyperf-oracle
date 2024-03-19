@@ -73,7 +73,7 @@ class OracleSchemaGrammarTest extends TestCase
 
         $statements = $blueprint->toSql($conn, $this->getGrammar());
 
-        $this->assertEquals(1, count($statements));
+        $this->assertEquals(2, count($statements));
         $this->assertEquals(
             'create table USERS ( "ID" number(10,0) not null, "EMAIL" varchar2(255) not null, constraint users_id_pk primary key ( "ID" ) )',
             $statements[0]
@@ -95,7 +95,7 @@ class OracleSchemaGrammarTest extends TestCase
 
         $statements = $blueprint->toSql($conn, $grammar);
 
-        $this->assertEquals(2, count($statements));
+        $this->assertEquals(3, count($statements));
         $this->assertEquals(
             'create table PREFIX_USERS ( "ID" number(10,0) not null, "EMAIL" varchar2(255) not null, "FOO_ID" number(10,0) not null, constraint users_foo_id_fk foreign key ( "FOO_ID" ) references PREFIX_ORDERS ( "ID" ), constraint users_id_pk primary key ( "ID" ) )',
             $statements[0]
@@ -131,7 +131,7 @@ class OracleSchemaGrammarTest extends TestCase
 
         $statements = $blueprint->toSql($conn, $this->getGrammar());
 
-        $this->assertEquals(1, count($statements));
+        $this->assertEquals(2, count($statements));
         $this->assertEquals(
             'create table USERS ( "ID" number(10,0) not null, "EMAIL" varchar2(255) default \'user@test.com\' not null, constraint users_id_pk primary key ( "ID" ) )',
             $statements[0]
@@ -172,7 +172,7 @@ class OracleSchemaGrammarTest extends TestCase
 
         $statements = $blueprint->toSql($conn, $grammar);
 
-        $this->assertEquals(1, count($statements));
+        $this->assertEquals(2, count($statements));
         $this->assertEquals(
             'create table PREFIX_USERS ( "ID" number(10,0) not null, "EMAIL" varchar2(255) not null, constraint prefix_users_id_pk primary key ( "ID" ) )',
             $statements[0]
@@ -195,7 +195,7 @@ class OracleSchemaGrammarTest extends TestCase
 
         $statements = $blueprint->toSql($conn, $grammar);
 
-        $this->assertEquals(2, count($statements));
+        $this->assertEquals(3, count($statements));
         $this->assertEquals(
             'create table PREFIX_USERS ( "ID" number(10,0) not null, "EMAIL" varchar2(255) not null, "FOO_ID" number(10,0) not null, constraint users_foo_id_fk foreign key ( "FOO_ID" ) references PREFIX_ORDERS ( "ID" ), constraint prefix_users_id_pk primary key ( "ID" ) )',
             $statements[0]
@@ -217,7 +217,7 @@ class OracleSchemaGrammarTest extends TestCase
 
         $statements = $blueprint->toSql($conn, $grammar);
 
-        $this->assertEquals(2, count($statements));
+        $this->assertEquals(3, count($statements));
         $this->assertEquals(
             'create table PREFIX_USERS ( "ID" number(10,0) not null, "EMAIL" varchar2(255) not null, "FOO_ID" number(10,0) not null, constraint users_foo_id_fk foreign key ( "FOO_ID" ) references PREFIX_ORDERS ( "ID" ) on delete cascade, constraint users_id_pk primary key ( "ID" ) )',
             $statements[0]
@@ -919,7 +919,7 @@ class OracleSchemaGrammarTest extends TestCase
 
         $statements = $blueprint->toSql($conn, $grammar);
 
-        $this->assertEquals(2, count($statements));
+        $this->assertEquals(3, count($statements));
         $this->assertEquals(
             'create table PREFIX_USERS ( "ID" number(10,0) not null, "EMAIL" varchar2(255) not null, "VERY_LONG_FOO_BAR_ID" number(10,0) not null, constraint prefix_users_very_long_foo_bar_id_fk foreign key ( "VERY_LONG_FOO_BAR_ID" ) references PREFIX_ORDERS ( "ID" ), constraint prefix_users_id_pk primary key ( "ID" ) )',
             $statements[0]
