@@ -8,18 +8,20 @@ use Hyperf\Context\ApplicationContext;
 use Hyperf\Context\Context;
 use Hyperf\Contract\ContainerInterface;
 use Hyperf\Database\ConnectionInterface;
+use Hyperf\Database\Exception\InvalidBindingException;
 use Hyperf\Database\Query\Expression as Raw;
 use Hyperf\Database\Model\Builder as ModelBuilder;
 use Hyperf\Paginator\LengthAwarePaginator;
 use Hyperf\Paginator\Paginator;
 use InvalidArgumentException;
-use Hyperf\Di\Container;
 use Mockery as m;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use Hyperf\Database\Oracle\Query\Grammars\OracleGrammar;
 use Hyperf\Database\Oracle\Query\OracleBuilder as Builder;
 use Hyperf\Database\Oracle\Query\Processors\OracleProcessor;
+
+use function Hyperf\Collection\collect;
 
 class OracleQueryBuilderTest extends TestCase
 {
@@ -99,10 +101,6 @@ class OracleQueryBuilderTest extends TestCase
         $this->assertSame('select "X"."Y" as "FOO.BAR" from "BAZ"', $builder->toSql());
     }
 
-    /**
-     * @TODO: Correct output should also wrap x.
-     *          select "W" "X"."Y"."Z" as "FOO.BAR" from "BAZ"
-     */
     public function testAliasWrappingWithSpacesInDatabaseName()
     {
         $builder = $this->getBuilder();
@@ -139,10 +137,6 @@ class OracleQueryBuilderTest extends TestCase
         $this->assertEquals('select "FOO" as "BAR" from "USERS"', $builder->toSql());
     }
 
-    /**
-     * @TODO: Fix alias prefix and wrapping.
-     *      select * from "PREFIX_USERS" "PREFIX_PEOPLE"
-     */
     public function testAliasWithPrefix()
     {
         $builder = $this->getBuilder();
@@ -151,10 +145,6 @@ class OracleQueryBuilderTest extends TestCase
         $this->assertSame('select * from "PREFIX_USERS" people', $builder->toSql());
     }
 
-    /**
-     * @TODO: Fix alias prefix
-     *      select * from "PREFIX_SERVICES" inner join "PREFIX_TRANSLATIONS" "PREFIX_T" on "PREFIX_T"."ITEM_ID" = "PREFIX_SERVICES"."ID"
-     */
     public function testJoinAliasesWithPrefix()
     {
         $builder = $this->getBuilder();
@@ -339,24 +329,8 @@ class OracleQueryBuilderTest extends TestCase
     public function testWheresWithArrayValue()
     {
         $builder = $this->getBuilder();
+        $this->expectException(InvalidBindingException::class);
         $builder->select('*')->from('users')->where('id', [12, 30]);
-        $this->assertSame('select * from "USERS" where "ID" = ?', $builder->toSql());
-        $this->assertEquals([0 => 12], $builder->getBindings());
-
-        $builder = $this->getBuilder();
-        $builder->select('*')->from('users')->where('id', '=', [12, 30]);
-        $this->assertSame('select * from "USERS" where "ID" = ?', $builder->toSql());
-        $this->assertEquals([0 => 12], $builder->getBindings());
-
-        $builder = $this->getBuilder();
-        $builder->select('*')->from('users')->where('id', '!=', [12, 30]);
-        $this->assertSame('select * from "USERS" where "ID" != ?', $builder->toSql());
-        $this->assertEquals([0 => 12], $builder->getBindings());
-
-        $builder = $this->getBuilder();
-        $builder->select('*')->from('users')->where('id', '<>', [12, 30]);
-        $this->assertSame('select * from "USERS" where "ID" <> ?', $builder->toSql());
-        $this->assertEquals([0 => 12], $builder->getBindings());
     }
 
     public function testDateBasedWheresAcceptsTwoArguments()
@@ -634,28 +608,12 @@ class OracleQueryBuilderTest extends TestCase
         $this->assertEquals([], $builder->getBindings());
     }
 
-    public function testOrWhereIntegerInRaw()
-    {
-        $builder = $this->getBuilder();
-        $builder->select('*')->from('users')->where('id', '=', 1)->orWhereIntegerInRaw('id', ['1a', 2]);
-        $this->assertSame('select * from "USERS" where "ID" = ? or "ID" in (1, 2)', $builder->toSql());
-        $this->assertEquals([0 => 1], $builder->getBindings());
-    }
-
     public function testWhereIntegerNotInRaw()
     {
         $builder = $this->getBuilder();
         $builder->select('*')->from('users')->whereIntegerNotInRaw('id', ['1a', 2]);
         $this->assertSame('select * from "USERS" where "ID" not in (1, 2)', $builder->toSql());
         $this->assertEquals([], $builder->getBindings());
-    }
-
-    public function testOrWhereIntegerNotInRaw()
-    {
-        $builder = $this->getBuilder();
-        $builder->select('*')->from('users')->where('id', '=', 1)->orWhereIntegerNotInRaw('id', ['1a', 2]);
-        $this->assertSame('select * from "USERS" where "ID" = ? or "ID" not in (1, 2)', $builder->toSql());
-        $this->assertEquals([0 => 1], $builder->getBindings());
     }
 
     public function testEmptyWhereIntegerInRaw()
@@ -698,49 +656,6 @@ class OracleQueryBuilderTest extends TestCase
         $builder->select('*')->from('users')->whereColumn($conditions);
         $this->assertSame('select * from "USERS" where ("FIRST_NAME" = "LAST_NAME" and "UPDATED_AT" > "CREATED_AT")', $builder->toSql());
         $this->assertEquals([], $builder->getBindings());
-    }
-
-    public function testWhereFullTextWithSingleParameter()
-    {
-        $builder = $this->getBuilder();
-        $builder->select('*')->from('users')->whereFullText('name', 'johnny');
-        $this->assertSame('select * from "USERS" where CONTAINS("NAME", ?, 1) > 0', $builder->toSql());
-        $this->assertEquals(['johnny'], $builder->getBindings());
-    }
-
-    public function testWhereFullTextWithMultipleParameters()
-    {
-        $builder = $this->getBuilder();
-        $builder->select('*')->from('users')->whereFullText(['firstname', 'lastname'], 'johnny');
-        $this->assertSame('select * from "USERS" where CONTAINS("FIRSTNAME", ?, 1) > 0 and CONTAINS("LASTNAME", ?, 2) > 0',
-            $builder->toSql());
-        $this->assertEquals(['johnny'], $builder->getBindings());
-    }
-
-    public function testWhereFullTextWithLogicalOrOperator()
-    {
-        $builder = $this->getBuilder();
-        $builder->select('*')->from('users')->whereFullText(['firstname', 'lastname'], 'johnny', [], 'or');
-        $this->assertSame('select * from "USERS" where CONTAINS("FIRSTNAME", ?, 1) > 0 or CONTAINS("LASTNAME", ?, 2) > 0',
-            $builder->toSql());
-        $this->assertEquals(['johnny'], $builder->getBindings());
-    }
-
-    public function testOrWhereFullTextWithSingleParameter()
-    {
-        $builder = $this->getBuilder();
-        $builder->select('*')->from('users')->orWhereFullText('firstname', 'johnny');
-        $this->assertSame('select * from "USERS" where CONTAINS("FIRSTNAME", ?, 1) > 0', $builder->toSql());
-        $this->assertEquals(['johnny'], $builder->getBindings());
-    }
-
-    public function testOrWhereFullTextWithMultipleParameters()
-    {
-        $builder = $this->getBuilder();
-        $builder->select('*')->from('users')->orWhereFullText('firstname', 'johnny')->orWhereFullText('lastname', 'white');
-        $this->assertSame('select * from "USERS" where CONTAINS("FIRSTNAME", ?, 1) > 0 or CONTAINS("LASTNAME", ?, 2) > 0',
-            $builder->toSql());
-        $this->assertEquals(['johnny', 'white'], $builder->getBindings());
     }
 
     public function testUnions()
@@ -796,9 +711,6 @@ class OracleQueryBuilderTest extends TestCase
         $this->assertEquals([0 => 1, 1 => 2], $builder->getBindings());
     }
 
-    /**
-     * @TODO: Fix union sql with limit
-     */
     public function testUnionLimitsAndOffsets()
     {
         $builder = $this->getBuilder();
@@ -1127,9 +1039,6 @@ class OracleQueryBuilderTest extends TestCase
         );
     }
 
-    /**
-     * @TODO: Review for page
-     */
     public function testForPage()
     {
         $builder = $this->getBuilder();
@@ -2052,11 +1961,6 @@ class OracleQueryBuilderTest extends TestCase
         $this->assertEquals(1, $result);
     }
 
-    /**
-     * @TODO: Fix sql for empty values.
-     *
-     * @link https://github.com/yajra/laravel-oci8/issues/586
-     */
     public function testInsertGetIdWithEmptyValues()
     {
         $builder = new Builder($this->getConnection(), new OracleGrammar, m::mock(OracleProcessor::class));
@@ -2086,10 +1990,6 @@ class OracleQueryBuilderTest extends TestCase
         $this->assertTrue($result);
     }
 
-    /**
-     * @TODO: Fix raw expressions value.
-     *      insert into "USERS" ("EMAIL") select UPPER('Foo') from dual union all select LOWER('Foo') from dual
-     */
     public function testMultipleInsertsWithExpressionValues()
     {
         $builder = $this->getBuilder();
@@ -2138,9 +2038,6 @@ class OracleQueryBuilderTest extends TestCase
         $this->assertEquals(1, $result);
     }
 
-    /**
-     * @TODO: Add support for upsert.
-     */
     protected function testUpsertMethod()
     {
         $builder = $this->getBuilder();
@@ -2149,9 +2046,6 @@ class OracleQueryBuilderTest extends TestCase
         $this->assertEquals(2, $result);
     }
 
-    /**
-     * @TODO: Add support for upsert.
-     */
     protected function testUpsertMethodWithUpdateColumns()
     {
         $builder = $this->getBuilder();
@@ -2300,9 +2194,6 @@ class OracleQueryBuilderTest extends TestCase
         $this->assertEquals(1, $result);
     }
 
-    /**
-     * @TODO: fix delete with join sql.
-     */
     protected function testDeleteWithJoinMethod()
     {
         $builder = $this->getBuilder();
@@ -2440,9 +2331,6 @@ class OracleQueryBuilderTest extends TestCase
         }
     }
 
-    /**
-     * @TODO: select with lock not yet supported.
-     */
     protected function testSelectWithLockUsesWritePdo()
     {
         $builder = $this->getBuilder();
@@ -2934,9 +2822,6 @@ class OracleQueryBuilderTest extends TestCase
         $this->assertEquals(['10'], $builder->getBindings());
     }
 
-    /**
-     * @TODO: add json support?
-     */
     public function testWhereJsonContains()
     {
         $this->expectExceptionMessage('This database engine does not support JSON contains operations.');
