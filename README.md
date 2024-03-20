@@ -12,7 +12,22 @@ Hyperf-Oracle is an Oracle Database Driver package for Hyperf. Extension of Hype
 composer require jonas-elias/hyperf-oracle
 ```
 
-### Environment Settings
+## Example
+
+```php
+use Hyperf\DbConnection\Db;
+
+// select
+Db::table('users')->get();
+// insert
+Db::table('users')->insert(['name' => 'jonas']);
+// update
+Db::table('users')->where('id', '=', 1)->update(['name' => 'johnny']);
+// delete
+Db::table('users')->delete(1);
+```
+
+## Environment Settings
 
 The following environment variables should be configured to specify the connection details for the Oracle database:
 
@@ -29,7 +44,7 @@ DB_AUTO_COMMIT=false
 DB_TIMEZONE=America/Sao_Paulo
 ```
 
-### Configuration in Code
+## Configuration in Code
 
 In your configuration file, you can set up the database connection using the following format:
 
@@ -67,21 +82,6 @@ return [
         ],
     ],
 ];
-```
-
-### Example
-
-```php
-use Hyperf\DbConnection\Db;
-
-// select
-Db::table('users')->get();
-// insert
-Db::table('users')->insert(['name' => 'jonas']);
-// update
-Db::table('users')->where('id', '=', 1)->update(['name' => 'johnny']);
-// delete
-Db::table('users')->delete(1);
 ```
 
 ## Credits
