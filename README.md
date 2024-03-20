@@ -46,7 +46,7 @@ DB_TIMEZONE=America/Sao_Paulo
 
 ## Configuration in Code
 
-In your configuration file, you can set up the database connection using the following format:
+In your `databases.php` configuration file, you can set up the database connection using the following format:
 
 ```php
 return [
