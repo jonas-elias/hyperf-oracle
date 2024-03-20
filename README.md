@@ -1,1 +1,3 @@
-# hyperf-oracle
+# Oracle driver for Hyperf
+
+[![Latest Stable Version](http://poser.pugx.org/jonas-elias/hyperf-oracle/v)](https://packagist.org/packages/jonas-elias/hyperf-oracle) [![Total Downloads](http://poser.pugx.org/jonas-elias/hyperf-oracle/downloads)](https://packagist.org/packages/jonas-elias/hyperf-oracle) [![Latest Unstable Version](http://poser.pugx.org/jonas-elias/hyperf-oracle/v/unstable)](https://packagist.org/packages/jonas-elias/hyperf-oracle) [![License](http://poser.pugx.org/jonas-elias/hyperf-oracle/license)](https://packagist.org/packages/jonas-elias/hyperf-oracle) [![PHP Version Require](http://poser.pugx.org/jonas-elias/hyperf-oracle/require/php)](https://packagist.org/packages/jonas-elias/hyperf-oracle)
